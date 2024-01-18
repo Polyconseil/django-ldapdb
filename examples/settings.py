@@ -2,6 +2,7 @@
 # This software is distributed under the two-clause BSD license.
 # Copyright (c) The django-ldapdb project
 
+import django
 import ldap
 
 DEBUG = True
@@ -47,7 +48,8 @@ USE_I18N = True
 
 # If you set this to False, Django will not format dates, numbers and
 # calendars according to the current locale
-USE_L10N = True
+if django.VERSION[0] == 3:
+    USE_L10N = True
 
 USE_TZ = True
 
