@@ -2,6 +2,8 @@
 # This software is distributed under the two-clause BSD license.
 # Copyright (c) The django-ldapdb project
 
+import re
+import subprocess
 import time
 
 import factory
@@ -88,8 +90,20 @@ class LdapServer(volatildap.LdapServer):
             yield quote('TLSCertificateFile %s', self._tls_certificate_path)
             yield quote('TLSCertificateKeyFile %s', self._tls_key_path)
 
-        yield quote('moduleload back_hdb')
-        yield quote('database hdb')
+        sp = subprocess.run([self.paths.slapd, '-V'], stderr=subprocess.PIPE, check=False)
+        search = re.search('slapd 2.([0-9])', sp.stderr.decode())
+        if search is None:  # Debian package does not show version before 2.4.49
+            slapd_version = 4
+        else:
+            slapd_version = int(search.group()[-1])
+
+        if slapd_version >= 5:
+            yield quote('moduleload back_mdb')
+            yield quote('database mdb')
+        else:
+            yield quote('moduleload back_hdb')
+            yield quote('database hdb')
+
         yield quote('directory %s', self._datadir)
         yield quote('suffix %s', self.suffix)
         yield quote('rootdn %s', self.rootdn)
