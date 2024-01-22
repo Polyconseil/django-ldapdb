@@ -75,6 +75,27 @@ baruser = ('uid=baruser,ou=users,ou=people,dc=example,dc=org', {
     'jpegPhoto': []})
 
 
+class LdapServer(volatildap.LdapServer):
+    def _configuration_lines(self):
+        def quote(base, *args):
+            return base % tuple("%s" % arg.replace('\\', '\\\\').replace('"', '\\"') for arg in args)
+
+        for schema in self.schemas:
+            yield quote('include %s', schema)
+
+        if self.tls_config:
+            yield quote('TLSCACertificateFile %s', self._tls_chain_path)
+            yield quote('TLSCertificateFile %s', self._tls_certificate_path)
+            yield quote('TLSCertificateKeyFile %s', self._tls_key_path)
+
+        yield quote('moduleload back_hdb')
+        yield quote('database hdb')
+        yield quote('directory %s', self._datadir)
+        yield quote('suffix %s', self.suffix)
+        yield quote('rootdn %s', self.rootdn)
+        yield quote('rootpw %s', self.rootpw)
+
+
 class UserFactory(factory.django.DjangoModelFactory):
     username = factory.Faker('username')
     email = factory.Faker('email')
@@ -100,7 +121,7 @@ class BaseTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.ldap_server = volatildap.LdapServer(
+        cls.ldap_server = LdapServer(
             initial_data=cls.directory,
             schemas=['core.schema', 'cosine.schema', 'inetorgperson.schema', 'nis.schema'],
         )
